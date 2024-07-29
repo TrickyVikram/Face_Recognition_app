@@ -27,10 +27,24 @@ while True:
     
 
 
+    Faces_detect = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = Faces_detect.detectMultiScale(gray, 1.3, 5)
+    for (x, y, w, h) in faces:
+
+        cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
+        text_y = y - 10 if y - 10 > 10 else y + h + 20 
+        
+        cv2.putText(img, "Face", (x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+
+    # Display the webcam feed
+    cv2.imshow("Webcam", img)
 
 
 
-    
+
+
    
     
     # Place the webcam feed on the background
