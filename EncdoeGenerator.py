@@ -23,3 +23,18 @@ for path in pathList:
 print(StudentsId)
 
 # Encode the images
+
+# Encode the images
+print("Encoding started")
+def encodeImages(images):
+    encodedList = []
+    for img in images:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        encode = face_recognition.face_encodings(img)[0]
+        encodedList.append(encode)
+    return
+
+# Encode the images
+encodeListKnown = encodeImages(imgList)
+print("Encoding Complete")
+print(encodeListKnown)
