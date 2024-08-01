@@ -53,7 +53,7 @@ print("Encoding Complete")
 if encodeListKnown:
     # Save the encoded list and student IDs to a file
     data = {"encodings": encodeListKnown, "student_ids": StudentsId}
-    with open("encoded_faces.pickle", "wb") as f:
+    with open("encoded_file.p", "wb") as f:
         pickle.dump(data, f)
     print("Encodings and IDs saved to encoded_faces.pickle")
 else:
