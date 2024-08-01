@@ -1,3 +1,8 @@
 git add .
 git commit -m "Update"
 git push
+
+
+pip install opencv-python
+pip install face_recognition
+pip install pillow
