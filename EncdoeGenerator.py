@@ -35,6 +35,7 @@ def encodeImages(images):
     return
 
 # Encode the images
+print("Start Complete")
 encodeListKnown = encodeImages(imgList)
 print("Encoding Complete")
 print(encodeListKnown)
