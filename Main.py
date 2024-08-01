@@ -1,5 +1,9 @@
-import cv2
 import os
+import cv2
+import numpy as np
+import face_recognition
+import pickle
+from PIL import Image
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -20,12 +24,59 @@ for path in modepathList:
     imgModesList.append(img)
 
 # Resize the mode image to be used
-imgModesList_Shape = cv2.resize(imgModesList[0], (482, 798))
+imgModesList_Shape = cv2.resize(imgModesList[2], (482, 798))
+
+#encdoe load file 
+
+
+try:
+    print("Loading encoded file data...")
+    with open("encoded_file.p", "rb") as file:
+        loaded_data = pickle.load(file)
+        file.close()
+        encodeListKnown, StudentsId = loaded_data["encodings"], loaded_data["student_ids"]
+        print(StudentsId)
+        print("Loading encoded file data... done ...")
+        # print("Loaded data:", loaded_data)
+
+except Exception as e:
+    print(f"Error loading encoded data: {e}")
+
+
+
 
 while True:
     success, img = cap.read()
-    
+    if not success or img is None:
+        print("Failed to capture image from webcam.")
+        continue
 
+    imgS= cv2.resize(img, (0, 0), None, 0.25, 0.25)
+    imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
+
+    # Find all the faces and face encodings in the current frame of video
+    faceCurFrame = face_recognition.face_locations(imgS)
+    encodeCurFrame = face_recognition.face_encodings(imgS, faceCurFrame)
+
+    # Compare the faces in the current frame with the known faces
+    for encodeFace, faceLoc in zip(encodeCurFrame, faceCurFrame):
+        matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
+        faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
+        print("matches", matches)
+        print("faceDis", faceDis)
+        matchIndex = np.argmin(faceDis)
+
+        if matches[matchIndex]:
+            name = StudentsId[matchIndex].upper()
+            print(name)
+            y1, x2, y2, x1 = faceLoc
+            y1, x2, y2, x1 = y1*4, x2*4, y2*4, x1*4
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.rectangle(img, (x1, y2-35), (x2, y2), (0, 255, 0), cv2.FILLED)
+            cv2.putText(img, name, (x1+6, y2-6), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+        
+    
+     
 
     # Detect faces in the image
     Faces_detect = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
@@ -35,18 +86,11 @@ while True:
     # Draw rectangles around the detected faces and add labels
     for (x, y, w, h) in faces:
         cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        text_y = y - 10 if y - 10 > 10 else y + h + 20 
-        # cv2.putText(img, "Face", (x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        text_y = y - 10 if y - 10 > 10 else y + h + 20
 
     # Display the webcam feed with the detected faces
     cv2.imshow("Webcam", img)
 
-
-
-
-
-   
-    
     # Place the webcam feed on the background
     img_background[376:376+480, 220:220+640] = img
 
@@ -59,6 +103,7 @@ while True:
     # Break the loop on 'q' key press
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+
 
 # Release the webcam and close windows
 cap.release()
