@@ -5,6 +5,29 @@ import face_recognition
 import pickle
 from PIL import Image
 
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
+from firebase_admin import storage
+
+
+# Specify the path to your Firebase service account JSON file
+json_file_path = "./ServiceAccountKey.json"
+databaseURL='https://collegeattendence-fff29-default-rtdb.firebaseio.com/'
+
+# Firebase Initialization
+try:
+    with open(json_file_path) as f:
+        cred = credentials.Certificate(json_file_path)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': databaseURL,
+            'storageBucket': 'collegeattendence-fff29.appspot.com'
+        })
+
+except FileNotFoundError:
+ print(f"File not found: {json_file_path}. Please check the file path and try again.")
+ exit()
+
 # Load the students' images from the images folder
 folderPath = "Images"
 if not os.path.exists(folderPath):
@@ -17,6 +40,9 @@ StudentsId = []
 
 # Read each image and append it to the list
 for path in pathList:
+    if path == ".DS_Store":
+        continue  # Skip .DS_Store file
+    
     img_path = os.path.join(folderPath, path)
     try:
         img = Image.open(img_path)
@@ -24,6 +50,14 @@ for path in pathList:
         img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         imgList.append(img_np)
         StudentsId.append(os.path.splitext(path)[0])
+
+        # Save the image to the storage bucket
+        fileName = img_path
+        bucket = storage.bucket()
+        blob = bucket.blob(fileName)
+        blob.upload_from_filename(fileName)
+        print(f"Image {fileName} uploaded successfully to Firebase storage.")
+        
     except Exception as e:
         print(f"Error processing image {path}: {e}")
 
@@ -55,7 +89,7 @@ if encodeListKnown:
     data = {"encodings": encodeListKnown, "student_ids": StudentsId}
     with open("encoded_file.p", "wb") as f:
         pickle.dump(data, f)
-    print("Encodings and IDs saved to encoded_faces.pickle")
+    print("Encodings and IDs saved to encoded_file.p")
 else:
     print("No encodings were generated.")
 

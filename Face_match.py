@@ -85,8 +85,9 @@ while True:
     cv2.imshow("Face Attendance", img_background)
 
     # Break the loop on 'q' key press
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    if cv2.waitKey(1) & 0xFF in [ord('q'), ord('Q')]:
+       break
+
 
 # Release the webcam and close windows
 cap.release()

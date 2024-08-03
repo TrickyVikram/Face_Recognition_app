@@ -46,7 +46,7 @@ while True:
     key = cv2.waitKey(1) & 0xFF
     if key == ord('s'):  # Press 's' to save the image
         if len(faces) > 0:
-            image_filename = f"{folderPath}/{student_id}.png"
+            image_filename = f"{folderPath}/{student_id}.jpg"
             # image_fullImg = f"{folderPath}/{student_id}.jpg"
             cv2.imwrite(image_filename, face)
             # cv2.imwrite(image_fullImg, frame)

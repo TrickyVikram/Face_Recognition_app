@@ -1,9 +1,34 @@
 import os
 import cv2
+import cvzone
 import numpy as np
 import face_recognition
 import pickle
 from PIL import Image
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
+
+# Specify the path to your Firebase service account JSON file
+json_file_path = "./ServiceAccountKey.json"
+databaseURL='https://collegeattendence-fff29-default-rtdb.firebaseio.com/'
+
+try:
+    # Attempt to open the JSON file
+    with open(json_file_path) as f:
+        cred = credentials.Certificate(json_file_path)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': databaseURL
+        })
+
+    # Reference to the database path where you want to insert data
+    ReferencePath = db.reference('Students')
+except FileNotFoundError:
+    print(f"File not found: {json_file_path}. Please check the file path and try again.")
+
+
+
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -23,8 +48,12 @@ for path in modepathList:
     img = cv2.imread(f"{folderModesPath}{path}")
     imgModesList.append(img)
 
+
+
+modeType = 4
+
 # Resize the mode image to be used
-imgModesList_Shape = cv2.resize(imgModesList[1], (482, 798))
+imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
 
 #encdoe load file 
 
@@ -36,13 +65,13 @@ try:
         file.close()
         encodeListKnown, StudentsId = loaded_data["encodings"], loaded_data["student_ids"]
         print(StudentsId)
-        print("Loading encoded file data... done ...")
+        print("Loading encoded file data...")
         # print("Loaded data:", loaded_data)
 
 except Exception as e:
     print(f"Error loading encoded data: {e}")
 
-
+counter=0
 
 
 while True:
@@ -65,29 +94,39 @@ while True:
         # print("matches", matches)
         # print("faceDis", faceDis)
         matchIndex = np.argmin(faceDis)
+        match_percentage = (1 - faceDis[matchIndex]) * 100
+        print("match index", matchIndex)
+        Students_Id = StudentsId[matchIndex]
 
-        if matches[matchIndex]:
-            name = StudentsId[matchIndex].upper()
-            # print(name)
-            y1, x2, y2, x1 = faceLoc
-            y1, x2, y2, x1 = y1*4, x2*4, y2*4, x1*4
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.rectangle(img, (x1, y2-35), (x2, y2), (0, 255, 0), cv2.FILLED)
-            cv2.putText(img, name, (x1+6, y2-6), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+        if matches[matchIndex] and match_percentage >= 5:
+           Students_Id = StudentsId[matchIndex]
+           match_value = match_percentage
+           y1, x2, y2, x1 = faceLoc
+           y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
 
+           # Using cvzone to draw the rectangle and put text
+           cvzone.cornerRect(img, (x1, y1, x2-x1, y2-y1), rt=0)  # Draws a rectangle with rounded corners
+        #    cvzone.putTextRect(img, f"{match_value:.2f}%", (x1 + 6, y2 - 10), scale=1, thickness=2, offset=10)
+        
+           if counter ==0:
+              counter = 1
 
-    # Detect faces in the image
-    Faces_detect = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    faces = Faces_detect.detectMultiScale(gray, 1.3, 5)
+    if counter !=0:
 
-    # Draw rectangles around the detected faces and add labels
-    # for (x, y, w, h) in faces:
-    #     cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-    #     text_y = y - 10 if y - 10 > 10 else y + h + 20
+        if counter==1:
+            studentInfo=db.reference('Students/'+str(Students_Id)).get()
+            print(studentInfo)
+        
+            # Data to be inserted
+        cvzone.putTextRect(img, f"Name: {studentInfo['name']}, Roll: {studentInfo['roll']}, Batch: {studentInfo['Batch']}", (x1 + 6, y2 - 10), scale=1, thickness=2, offset=10)
 
+        
+        counter+=1
+
+           
+ 
     # Display the webcam feed with the detected faces
-    cv2.imshow("Webcam", img)
+    cv2.imshow("Webcam", img_background)
 
     # Place the webcam feed on the background
     img_background[376:376+480, 220:220+640] = img
@@ -98,9 +137,11 @@ while True:
     # Display the result
     cv2.imshow("Face Attendance", img_background)
 
-    # Break the loop on 'q' key press
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+
+
+     # Break the loop on 'q' key press
+    if cv2.waitKey(1) & 0xFF in [ord('q'), ord('Q')]:
+       break
 
 
 # Release the webcam and close windows
