@@ -10,9 +10,11 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 
+from  dotenv import load_dotenv
+
 # Specify the path to your Firebase service account JSON file
 json_file_path = "./ServiceAccountKey.json"
-databaseURL='https://collegeattendence-fff29-default-rtdb.firebaseio.com/'
+databaseURL=os.getenv('databaseURL')
 
 try:
     # Attempt to open the JSON file

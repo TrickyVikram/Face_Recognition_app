@@ -1,12 +1,17 @@
+
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 from firebase_admin import storage
+from  dotenv import load_dotenv
+import os
+
 
 
 # Specify the path to your Firebase service account JSON file
 json_file_path = "./ServiceAccountKey.json"
-databaseURL='https://collegeattendence-fff29-default-rtdb.firebaseio.com/'
+databaseURL=os.getenv('databaseURL')
+storageBucket=os.getenv('storageBucket')
 
 # Firebase Initialization
 try:
@@ -14,7 +19,7 @@ try:
         cred = credentials.Certificate(json_file_path)
         firebase_admin.initialize_app(cred, {
             'databaseURL': databaseURL,
-            'storageBucket': 'collegeattendence-fff29.appspot.com'
+            'storageBucket': storageBucket
         })
 
 except FileNotFoundError:
