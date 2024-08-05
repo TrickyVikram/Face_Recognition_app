@@ -108,9 +108,14 @@ while True:
                 cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), rt=0)
 
             if counter ==0:
-                
+                cvzone.putTextRect(img, "Loding", (275,400))
+                cv2.imshow("Face Attendance", img_background)
+                cv2.waitKey(10)
                 counter = 1
                 modeType = 4
+                
+                
+                
 
         if counter != 0:
             if counter == 1:
