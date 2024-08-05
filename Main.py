@@ -55,7 +55,7 @@ for path in modepathList:
     img = cv2.imread(f"{folderModesPath}{path}")
     imgModesList.append(img)
 
-modeType = 3
+modeType = 4
 counter = 0
 imgStudent = []
 
@@ -122,6 +122,7 @@ while True:
             studentInfo['total_attendence']+=1
             ReferencePath.child('total_attendence').set(studentInfo['total_attendence'])
 
+
         if 30 < counter <= 40:
             modeType = 2
         elif counter <= 30:
@@ -134,6 +135,15 @@ while True:
             imgModesList_Shape[185:185+216, 113:113+216] = imgStudent
 
         counter += 1
+
+        if counter == 50:
+            counter = 0
+            modeType = 3
+            studentInfo = []
+            Student_img = []
+            imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+            
+
 
     # Place the webcam feed on the background
     img_background[376:376+480, 220:220+640] = img
