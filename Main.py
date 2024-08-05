@@ -102,9 +102,9 @@ while True:
             y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
             cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), rt=0)
 
-            if counter == 0:
-                counter = 1
-                modeType = 4
+        if counter ==0:
+         counter = 1
+         modeType = 4
 
     if counter != 0:
         if counter == 1:
@@ -125,7 +125,8 @@ while True:
 
         if 30 < counter <= 40:
             modeType = 2
-        elif counter <= 30:
+        imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+        if counter <= 30:
             modeType = 3
             cv2.putText(imgModesList_Shape, f"{studentInfo['roll']}", (165, 485), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
             cv2.putText(imgModesList_Shape, f"{studentInfo['name']}", (200, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
@@ -136,12 +137,13 @@ while True:
 
         counter += 1
 
-        if counter == 50:
+        if counter == 45:
             counter = 0
-            modeType = 3
+            modeType = 4
             studentInfo = []
             Student_img = []
             imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+            
             
 
 
