@@ -128,21 +128,23 @@ while True:
 
         if counter==1:
 
+            # Get the student information from the database
             studentInfo=db.reference('Students/'+str(Students_Id)).get()
-          
-
             print(studentInfo)
-
+            #get image from firebase
             blob =bucket.get_blob(f"Images/{Students_Id}.png")
-           
-            
-
             array=np.frombuffer(blob.download_as_string(), np.uint8)
             Student_img = cv2.imdecode(array, cv2.COLOR_BGR2GRAY)
+
+            # uppdate the student attendance
+            ReferencePath= db.reference('Students/'+str(Students_Id))
+            studentInfo['total_attendence']+=1
+            ReferencePath.child('total_attendence').set(studentInfo['total_attendence'])
             
-
+        if counter>10 and counter<=20:
+            modeType = 2
            
-
+        if counter<=10:
             cv2.putText(imgModesList_Shape, f"{studentInfo['roll']}", (165, 485), cv2.FONT_HERSHEY_SIMPLEX, 0.7,  (255, 255, 255), thickness=2)
             cv2.putText(imgModesList_Shape, f"{studentInfo['name']}", (200, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
             cv2.putText(imgModesList_Shape, f"{studentInfo['Batch']}", (207, 591), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
