@@ -150,7 +150,7 @@ while True:
             
        
             imgStudent = cv2.resize(Student_img, (216, 216))
-            imgModesList_Shape[100:100+216, 110:110+216] = imgStudent
+            imgModesList_Shape[185:185+216, 113:113+216] = imgStudent
        
 
             
