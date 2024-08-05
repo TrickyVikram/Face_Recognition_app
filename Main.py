@@ -5,6 +5,7 @@ import numpy as np
 import face_recognition
 import pickle
 from PIL import Image
+from datetime import datetime
 
 import firebase_admin
 from firebase_admin import credentials
@@ -55,9 +56,7 @@ for path in modepathList:
     img = cv2.imread(f"{folderModesPath}{path}")
     imgModesList.append(img)
 
-modeType = 4
-counter = 0
-imgStudent = []
+
 
 
 # Load encoded file
@@ -70,7 +69,10 @@ try:
 except Exception as e:
     print(f"Error loading encoded data: {e}")
 
+modeType = 4
 counter = 0
+imgStudent = []
+
 
 while True:
     success, img = cap.read()
@@ -78,7 +80,7 @@ while True:
         print("Failed to capture image from webcam.")
         continue
 
-    imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+   
 
     imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
     imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
@@ -87,64 +89,107 @@ while True:
     faceCurFrame = face_recognition.face_locations(imgS)
     encodeCurFrame = face_recognition.face_encodings(imgS, faceCurFrame)
 
+    imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+
+    if faceCurFrame:
     # Compare faces in the current frame with known faces
-    for encodeFace, faceLoc in zip(encodeCurFrame, faceCurFrame):
-        matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
-        faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
-        matchIndex = np.argmin(faceDis)
-        match_percentage = (1 - faceDis[matchIndex]) * 100
-        Students_Id = StudentsId[matchIndex]
-
-        if matches[matchIndex] and match_percentage >= 5:
+        for encodeFace, faceLoc in zip(encodeCurFrame, faceCurFrame):
+            matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
+            faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
+            matchIndex = np.argmin(faceDis)
+            match_percentage = (1 - faceDis[matchIndex]) * 100
             Students_Id = StudentsId[matchIndex]
-            match_value = match_percentage
-            y1, x2, y2, x1 = faceLoc
-            y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
-            cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), rt=0)
 
-        if counter ==0:
-         counter = 1
-         modeType = 4
+            if matches[matchIndex] and match_percentage >= 5:
+                Students_Id = StudentsId[matchIndex]
+                match_value = match_percentage
+                y1, x2, y2, x1 = faceLoc
+                y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
+                cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), rt=0)
 
-    if counter != 0:
-        if counter == 1:
-            # Get student information from the database
-            studentInfo = db.reference(f'Students/{Students_Id}').get()
-            print(studentInfo)
+            if counter ==0:
+                
+                counter = 1
+                modeType = 4
 
-            # Get image from Firebase
-            blob = bucket.get_blob(f"Images/{Students_Id}.png")
-            array = np.frombuffer(blob.download_as_string(), np.uint8)
-            Student_img = cv2.imdecode(array, cv2.COLOR_BGR2GRAY)
-
-             # uppdate the student attendance
-            ReferencePath= db.reference('Students/'+str(Students_Id))
-            studentInfo['total_attendence']+=1
-            ReferencePath.child('total_attendence').set(studentInfo['total_attendence'])
+        if counter != 0:
+            if counter == 1:
+            
 
 
-        if 30 < counter <= 40:
-            modeType = 2
+            # Get student info from Firebase
+
+                studentInfo = db.reference(f'Students/{Students_Id}').get()
+                print(studentInfo)
+
+                # Get image from Firebase
+                blob = bucket.get_blob(f"Images/{Students_Id}.png")
+                array = np.frombuffer(blob.download_as_string(), np.uint8)
+                Student_img = cv2.imdecode(array, cv2.COLOR_BGR2GRAY)
+
+                # Update the student attendance
+                datetimeObject = datetime.strptime(studentInfo['last_attendence'], "%Y-%m-%d %H:%M:%S")
+                secondsElapsed = (datetime.now() - datetimeObject).total_seconds()
+                print(secondsElapsed)
+
+
+            if secondsElapsed < 10:
+                # Update Firebase reference
+                ReferencePath = db.reference(f'Students/{Students_Id}')
+
+                # Assuming 'total_attendence' should be an integer count, initialize if not already integer
+                try:
+                    total_attendence = int(studentInfo['total_attendence'])
+                except ValueError:
+                    total_attendence = 0  # or handle it appropriately
+
+                # Increment count
+                total_attendence += 1
+
+                # Set updated count back to Firebase
+                ReferencePath.child('total_attendence').set(total_attendence)
+
+                # Update 'last_attendence' with current datetime
+                current_datetime_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                ReferencePath.child('last_attendence').set(current_datetime_str)
+            else:
+                print("Attendance not marked. Time elapsed is more than 1 Hours .")
+                modeType = 1
+                counter = 0
+                imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+
+
+    else:
+        modeType = 4
+        counter = 0
         imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
-        if counter <= 30:
-            modeType = 3
-            cv2.putText(imgModesList_Shape, f"{studentInfo['roll']}", (165, 485), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
-            cv2.putText(imgModesList_Shape, f"{studentInfo['name']}", (200, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
-            cv2.putText(imgModesList_Shape, f"{studentInfo['Batch']}", (207, 591), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
 
-            imgStudent = cv2.resize(Student_img, (216, 216))
-            imgModesList_Shape[185:185+216, 113:113+216] = imgStudent
 
-        counter += 1
 
-        if counter == 45:
-            counter = 0
-            modeType = 4
-            studentInfo = []
-            Student_img = []
-            imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
-            
-            
+
+        if modeType!=1:
+            if 30 < counter <= 40:
+                modeType = 2
+                imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+                if counter <= 30:
+                    modeType = 3
+                    cv2.putText(imgModesList_Shape, f"{studentInfo['roll']}", (165, 485), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
+                    cv2.putText(imgModesList_Shape, f"{studentInfo['name']}", (200, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
+                    cv2.putText(imgModesList_Shape, f"{studentInfo['Batch']}", (207, 591), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
+
+                    imgStudent = cv2.resize(Student_img, (216, 216))
+                    imgModesList_Shape[185:185+216, 113:113+216] = imgStudent
+
+            counter += 1
+
+            if counter == 45:
+                counter = 0
+                modeType = 4
+                studentInfo = []
+                Student_img = []
+                imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+                
+                
 
 
     # Place the webcam feed on the background
