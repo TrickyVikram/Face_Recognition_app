@@ -9,19 +9,25 @@ from PIL import Image
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+from firebase_admin import storage
+
 
 from  dotenv import load_dotenv
 
 # Specify the path to your Firebase service account JSON file
 json_file_path = "./ServiceAccountKey.json"
 databaseURL=os.getenv('databaseURL')
+storageBucket=os.getenv('storageBucket')
+
 
 try:
     # Attempt to open the JSON file
     with open(json_file_path) as f:
         cred = credentials.Certificate(json_file_path)
         firebase_admin.initialize_app(cred, {
-            'databaseURL': databaseURL
+            'databaseURL': databaseURL,
+            storageBucket: storageBucket
+
         })
 
     # Reference to the database path where you want to insert data
@@ -29,7 +35,7 @@ try:
 except FileNotFoundError:
     print(f"File not found: {json_file_path}. Please check the file path and try again.")
 
-
+bucket = storage.bucket(storageBucket)
 
 
 # Initialize webcam
@@ -51,11 +57,14 @@ for path in modepathList:
     imgModesList.append(img)
 
 
+modeType = 3
+counter=0
+imgStudent=[]
 
-modeType = 4
 
 # Resize the mode image to be used
 imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+
 
 #encdoe load file 
 
@@ -97,7 +106,7 @@ while True:
         # print("faceDis", faceDis)
         matchIndex = np.argmin(faceDis)
         match_percentage = (1 - faceDis[matchIndex]) * 100
-        print("match index", matchIndex)
+        # print("match index", matchIndex)
         Students_Id = StudentsId[matchIndex]
 
         if matches[matchIndex] and match_percentage >= 5:
@@ -108,27 +117,53 @@ while True:
 
            # Using cvzone to draw the rectangle and put text
            cvzone.cornerRect(img, (x1, y1, x2-x1, y2-y1), rt=0)  # Draws a rectangle with rounded corners
-        #    cvzone.putTextRect(img, f"{match_value:.2f}%", (x1 + 6, y2 - 10), scale=1, thickness=2, offset=10)
+           
+
         
            if counter ==0:
               counter = 1
+              modeType = 4
 
     if counter !=0:
 
         if counter==1:
-            studentInfo=db.reference('Students/'+str(Students_Id)).get()
-            print(studentInfo)
-        
-            # Data to be inserted
-        cvzone.putTextRect(img, f"Name: {studentInfo['name']}, Roll: {studentInfo['roll']}, Batch: {studentInfo['Batch']}", (x1 + 6, y2 - 10), scale=1, thickness=2, offset=10)
 
+            studentInfo=db.reference('Students/'+str(Students_Id)).get()
+          
+
+            print(studentInfo)
+
+            blob =bucket.get_blob(f"Images/{Students_Id}.png")
+           
+            
+
+            array=np.frombuffer(blob.download_as_string(), np.uint8)
+            Student_img = cv2.imdecode(array, cv2.COLOR_BGR2GRAY)
+            
+
+           
+
+            cv2.putText(imgModesList_Shape, f"{studentInfo['roll']}", (165, 485), cv2.FONT_HERSHEY_SIMPLEX, 0.7,  (255, 255, 255), thickness=2)
+            cv2.putText(imgModesList_Shape, f"{studentInfo['name']}", (200, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
+            cv2.putText(imgModesList_Shape, f"{studentInfo['Batch']}", (207, 591), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
+
+            
+       
+            imgStudent = cv2.resize(Student_img, (216, 216))
+            imgModesList_Shape[100:100+216, 110:110+216] = imgStudent
+       
+
+            
+           
         
         counter+=1
 
-           
+
+
+
  
     # Display the webcam feed with the detected faces
-    cv2.imshow("Webcam", img_background)
+    
 
     # Place the webcam feed on the background
     img_background[376:376+480, 220:220+640] = img

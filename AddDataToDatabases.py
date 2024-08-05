@@ -61,6 +61,12 @@ data = {
             "branch": "CSE",
             "section": "f",
             "last_attendence": "2021-09-01 11:00:15",
+        },
+
+         "11212815": {
+          "name": "Umang Kumar",
+          "roll":11212815 ,
+          "Batch": "2021_2025",
         }
 }
 
