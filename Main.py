@@ -1,3 +1,17 @@
+import os
+import cv2
+import cvzone
+import numpy as np
+import face_recognition
+import pickle
+from PIL import Image
+from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
+from firebase_admin import storage
+from dotenv import load_dotenv
+
 
 """
 This script performs face recognition and attendance marking using a webcam.
@@ -20,21 +34,9 @@ The script performs the following steps:
 16. Releases the webcam and closes windows.
 Note: Make sure to provide the correct file paths for the background image, mode images, encoded file, and Firebase service account JSON file.
 """
-import os
-import cv2
-import cvzone
-import numpy as np
-import face_recognition
-import pickle
-from PIL import Image
-from datetime import datetime
+# Import necessary libraries and modules
 
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import db
-from firebase_admin import storage
 
-from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -75,9 +77,6 @@ for path in modepathList:
     img = cv2.imread(f"{folderModesPath}{path}")
     imgModesList.append(img)
 
-
-
-
 # Load encoded file
 try:
     print("Loading encoded file data...")
@@ -92,14 +91,11 @@ modeType = 4
 counter = 0
 imgStudent = []
 
-
 while True:
     success, img = cap.read()
     if not success or img is None:
         print("Failed to capture image from webcam.")
         continue
-
-   
 
     imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
     imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
@@ -111,7 +107,7 @@ while True:
     imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
 
     if faceCurFrame:
-    # Compare faces in the current frame with known faces
+        # Compare faces in the current frame with known faces
         for encodeFace, faceLoc in zip(encodeCurFrame, faceCurFrame):
             matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
             faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
@@ -126,23 +122,16 @@ while True:
                 y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
                 cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), rt=0)
 
-            if counter ==0:
+            if counter == 0:
                 cvzone.putTextRect(img, "Loding", (275,400))
                 cv2.imshow("Face Attendance", img_background)
                 cv2.waitKey(10)
                 counter = 1
                 modeType = 4
-                
-                
-                
 
         if counter != 0:
             if counter == 1:
-            
-
-
-            # Get student info from Firebase
-
+                # Get student info from Firebase
                 studentInfo = db.reference(f'Students/{Students_Id}').get()
                 print(studentInfo)
 
@@ -155,7 +144,6 @@ while True:
                 datetimeObject = datetime.strptime(studentInfo['last_attendence'], "%Y-%m-%d %H:%M:%S")
                 secondsElapsed = (datetime.now() - datetimeObject).total_seconds()
                 print(secondsElapsed)
-
 
             if secondsElapsed < 10:
                 # Update Firebase reference
@@ -178,39 +166,32 @@ while True:
                 counter = 0
                 imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
 
-
     else:
         modeType = 4
         counter = 0
         imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
 
+    if modeType != 1:
+        if 30 < counter <= 40:
+            modeType = 2
+            imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
+            if counter <= 30:
+                modeType = 3
+                cv2.putText(imgModesList_Shape, f"{studentInfo['roll']}", (165, 485), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
+                cv2.putText(imgModesList_Shape, f"{studentInfo['name']}", (200, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
+                cv2.putText(imgModesList_Shape, f"{studentInfo['Batch']}", (207, 591), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
 
+                imgStudent = cv2.resize(Student_img, (216, 216))
+                imgModesList_Shape[185:185+216, 113:113+216] = imgStudent
 
+        counter += 1
 
-        if modeType!=1:
-            if 30 < counter <= 40:
-                modeType = 2
-                imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
-                if counter <= 30:
-                    modeType = 3
-                    cv2.putText(imgModesList_Shape, f"{studentInfo['roll']}", (165, 485), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
-                    cv2.putText(imgModesList_Shape, f"{studentInfo['name']}", (200, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
-                    cv2.putText(imgModesList_Shape, f"{studentInfo['Batch']}", (207, 591), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
-
-                    imgStudent = cv2.resize(Student_img, (216, 216))
-                    imgModesList_Shape[185:185+216, 113:113+216] = imgStudent
-
-            counter += 1
-
-            if counter == 45:
-                counter = 0
-                modeType = 4
-                studentInfo = []
-                Student_img = []
-                imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
-                
-                
-
+        if counter == 45:
+            counter = 0
+            modeType = 4
+            studentInfo = []
+            Student_img = []
+            imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
 
     # Place the webcam feed on the background
     img_background[376:376+480, 220:220+640] = img
