@@ -116,6 +116,7 @@ while True:
             Students_Id = StudentsId[matchIndex]
 
             if matches[matchIndex] and match_percentage >= 5:
+                # Mark attendance and display student information
                 Students_Id = StudentsId[matchIndex]
                 match_value = match_percentage
                 y1, x2, y2, x1 = faceLoc
@@ -123,7 +124,8 @@ while True:
                 cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), rt=0)
 
             if counter == 0:
-                cvzone.putTextRect(img, "Loding", (275,400))
+                # Display "Loading" message
+                cvzone.putTextRect(img, "Loading", (275, 400))
                 cv2.imshow("Face Attendance", img_background)
                 cv2.waitKey(10)
                 counter = 1
@@ -161,18 +163,20 @@ while True:
                     print("Error:")
                
             else:
-                print("Attendance not marked. Time elapsed is more than 1 Hours .")
+                print("Attendance not marked. Time elapsed is more than 1 Hour.")
                 modeType = 1
                 counter = 0
                 imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
 
     else:
+        # Reset mode and counter if no face is detected
         modeType = 4
         counter = 0
         imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
 
     if modeType != 1:
         if 30 < counter <= 40:
+            # Display student information for a certain duration
             modeType = 2
             imgModesList_Shape = cv2.resize(imgModesList[modeType], (482, 798))
             if counter <= 30:
@@ -187,6 +191,7 @@ while True:
         counter += 1
 
         if counter == 45:
+            # Reset mode, counter, and student information after a certain duration
             counter = 0
             modeType = 4
             studentInfo = []
