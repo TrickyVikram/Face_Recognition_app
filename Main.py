@@ -1,3 +1,25 @@
+
+"""
+This script performs face recognition and attendance marking using a webcam.
+The script performs the following steps:
+1. Imports necessary libraries and modules.
+2. Loads environment variables from a .env file.
+3. Initializes Firebase using the service account JSON file.
+4. Initializes the webcam and sets its width and height.
+5. Loads the background image.
+6. Loads the images from the "Modes" folder.
+7. Loads the encoded file data.
+8. Enters an infinite loop to continuously capture frames from the webcam.
+9. Resizes and converts the captured frame to RGB.
+10. Detects faces and encodes them in the current frame.
+11. Compares the detected faces with known faces.
+12. If a match is found and the match percentage is above a threshold, marks attendance and displays student information.
+13. If no face is detected, resets the mode and counter.
+14. Displays the webcam feed and mode image on the background.
+15. Breaks the loop and exits the script on 'q' key press.
+16. Releases the webcam and closes windows.
+Note: Make sure to provide the correct file paths for the background image, mode images, encoded file, and Firebase service account JSON file.
+"""
 import os
 import cv2
 import cvzone
@@ -29,10 +51,7 @@ try:
         firebase_admin.initialize_app(cred, {
             'databaseURL': databaseURL,
             'storageBucket': storageBucket
-        })
-
-    # Reference to the database path
-    ReferencePath = db.reference('Students')
+        }) 
 except FileNotFoundError:
     print(f"File not found: {json_file_path}. Please check the file path and try again.")
 
@@ -145,18 +164,14 @@ while True:
                 # Assuming 'total_attendence' should be an integer count, initialize if not already integer
                 try:
                     total_attendence = int(studentInfo['total_attendence'])
+                    total_attendence += 1
+                    
+                    ReferencePath.child('total_attendence').set(total_attendence)
+                    current_datetime_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    ReferencePath.child('last_attendence').set(current_datetime_str)
                 except ValueError:
-                    total_attendence = 0  # or handle it appropriately
-
-                # Increment count
-                total_attendence += 1
-
-                # Set updated count back to Firebase
-                ReferencePath.child('total_attendence').set(total_attendence)
-
-                # Update 'last_attendence' with current datetime
-                current_datetime_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                ReferencePath.child('last_attendence').set(current_datetime_str)
+                    print("Error:")
+               
             else:
                 print("Attendance not marked. Time elapsed is more than 1 Hours .")
                 modeType = 1
