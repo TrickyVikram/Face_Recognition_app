@@ -5,21 +5,18 @@ import face_recognition
 import pickle
 import time
 import csv
-
-
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
-from firebase_admin import storage
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 
-
-# Specify the path to your Firebase service account JSON file
+# Firebase Configuration
 json_file_path = "./ServiceAccountKey.json"
 databaseURL = os.getenv('databaseURL')
 storageBucket = os.getenv('storageBucket')
-
 
 # Firebase Initialization
 try:
@@ -33,8 +30,6 @@ except FileNotFoundError:
     print(f"File not found: {json_file_path}. Please check the file path and try again.")
     exit()
 
-
-
 # Path to the attendance CSV file
 attendance_file = 'attendance.csv'
 
@@ -42,14 +37,52 @@ attendance_file = 'attendance.csv'
 if not os.path.isfile(attendance_file):
     with open(attendance_file, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Student_ID', 'Time'])  # Write header if file is new
+        writer.writerow(['Student_ID', 'last_attendance'])  # Write header if file is new
 
-# Function to mark attendance in CSV
+# Function to mark attendance in Firebase Database
 def mark_attendance(student_id):
     current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())  # Get current time in a readable format
+
+    # Get a reference to the Students node in Firebase Realtime Database
+    ref = db.reference('Students')
+
+    # Check if this student exists in the database
+    attendance_ref = ref.order_by_child('Student_ID').equal_to(student_id).limit_to_last(1).get()
+
+    if attendance_ref:
+        # If student exists, check if the 'last_attendance' field exists
+        for key, value in attendance_ref.items():
+            last_marked_time = value.get('last_attendance', None)  # Use .get() to avoid KeyError
+            
+            # If 'last_attendance' doesn't exist, treat it as the first attendance
+            if last_marked_time:
+                # Convert the string 'last_marked_time' to timestamp
+                last_marked_timestamp = time.mktime(time.strptime(last_marked_time, "%Y-%m-%d %H:%M:%S"))
+                
+                # Get current timestamp
+                current_timestamp = time.time()
+
+                # Check if attendance was marked within the last 20 seconds
+                if current_timestamp - last_marked_timestamp < 20:
+                    print(f"Attendance already marked for {student_id} within 20 seconds.")
+                    return
+            else:
+                print(f"No previous attendance found for {student_id}. Marking first attendance.")
+    else:
+        print(f"Student {student_id} not found in database. Adding to database.")
+    
+    # Save or update the attendance data in Firebase
+    ref.push({
+        'Student_ID': student_id,
+        'last_attendance': current_time,
+    })
+
+    print(f"Attendance marked for {student_id} at {current_time}")
+
+    # Log attendance to CSV file
     with open(attendance_file, mode='a', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([student_id, current_time])  # Write student ID and time to CSV
+        writer.writerow([student_id, current_time])  # Append the student's attendance to CSV
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -114,7 +147,7 @@ while True:
             matchIndex = np.argmin(faceDis)
             match_percentage = (1 - faceDis[matchIndex]) * 100
             
-            if matches[matchIndex] and match_percentage >= 65:  # Match
+            if matches[matchIndex] and match_percentage >= 50:  # Match
                 Students_Id = StudentsId[matchIndex].upper()
                 match_value = match_percentage
                 modeType = 2  # Set mode to 5 on successful match
@@ -124,14 +157,13 @@ while True:
                 if Students_Id in last_marked_time:
                     time_diff = current_time - last_marked_time[Students_Id]
                     if time_diff < 10:  # If less than 10 seconds
-                        modeType = 4 # Set to mode 6 for "Already Marked"
-                        # cv2.putText(img, (faceLoc[3], faceLoc[2] - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+                        modeType = 4  # Set to mode 6 for "Already Marked"
                     else:
                         last_marked_time[Students_Id] = current_time  # Update the time if it's more than 10 seconds
-                        mark_attendance(Students_Id)  # Mark attendance
+                        mark_attendance(Students_Id)  # Mark attendance in Firebase
                 else:
-                    last_marked_time[Students_Id] = current_time  # First time marking
-                    mark_attendance(Students_Id)  # Mark attendance
+                    last_marked_time[Students_Id] = current_time  # First time marking attendance
+                    mark_attendance(Students_Id)  # Mark attendance in Firebase
                 
                 # Display face match percentage and bounding box for known faces
                 y1, x2, y2, x1 = faceLoc
@@ -163,9 +195,9 @@ while True:
     cv2.imshow("Face Attendance", img_background)
 
     # Break the loop on 'q' key press
-    if cv2.waitKey(1) & 0xFF in [ord('q'), ord('Q')]:
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Release the webcam and close windows
+# Release the webcam and close all windows
 cap.release()
 cv2.destroyAllWindows()
