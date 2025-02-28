@@ -9,13 +9,12 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 from firebase_admin import storage
-from  dotenv import load_dotenv
-
+from dotenv import load_dotenv
 
 # Specify the path to your Firebase service account JSON file
 json_file_path = "./ServiceAccountKey.json"
-databaseURL=os.getenv('databaseURL')
-storageBucket=os.getenv('storageBucket')
+databaseURL = os.getenv('databaseURL')
+storageBucket = os.getenv('storageBucket')
 
 # Firebase Initialization
 try:
@@ -25,10 +24,9 @@ try:
             'databaseURL': databaseURL,
             'storageBucket': storageBucket
         })
-
 except FileNotFoundError:
- print(f"File not found: {json_file_path}. Please check the file path and try again.")
- exit()
+    print(f"File not found: {json_file_path}. Please check the file path and try again.")
+    exit()
 
 # Load the students' images from the images folder
 folderPath = "Images"
@@ -54,10 +52,10 @@ for path in pathList:
         StudentsId.append(os.path.splitext(path)[0])
 
         # Save the image to the storage bucket
-        fileName = img_path
+        fileName = f"student_images/{StudentsId[-1]}.jpg"  # Using student ID as filename
         bucket = storage.bucket()
         blob = bucket.blob(fileName)
-        blob.upload_from_filename(fileName)
+        blob.upload_from_filename(img_path)
         print(f"Image {fileName} uploaded successfully to Firebase storage.")
         
     except Exception as e:
@@ -99,8 +97,18 @@ else:
 try:
     with open("encoded_file.p", "rb") as f:
         loaded_data = pickle.load(f)
-        print("Loaded data:", loaded_data)
+        # print("Loaded data:", loaded_data)
 except Exception as e:
     print(f"Error loading encoded data: {e}")
 
-# End of file
+# Reference to the database path where you want to insert data
+ReferencePath = db.reference('Students')
+
+# Insert student data into Firebase
+for student_id in StudentsId:
+    student_data = {
+        "roll": student_id,  # Adjust according to the actual data structure you need
+        'last_attendence': '2025-02-26 01:03:22',
+    }
+    ReferencePath.child(student_id).set(student_data)
+    print(f"\n{student_id} Data Inserted Successfully in Firebase Realtime Database")
