@@ -20,10 +20,13 @@ imgModesList = []
 # Read each image and append it to the list
 for path in modepathList:
     img = cv2.imread(f"{folderModesPath}{path}")
-    imgModesList.append(img)
+    if img is None:
+        print(f"Warning: Failed to load image at {folderModesPath}{path}")
+    else:
+        imgModesList.append(img)
 
-# Resize the mode image to be used
-imgModesList_Shape = cv2.resize(imgModesList[1], (482, 798))
+# Resize the mode images
+imgModesList_Shape = [cv2.resize(img, (482, 798)) for img in imgModesList if img is not None]
 
 # Load encoded data
 try:
@@ -35,6 +38,8 @@ try:
 except Exception as e:
     print(f"Error loading encoded data: {e}")
     exit()
+
+modeType = 0 # Default mode type if no match or face
 
 while True:
     success, img = cap.read()
@@ -52,30 +57,41 @@ while True:
     Students_Id = ''
     match_value = None
 
-    # Compare the faces in the current frame with the known faces
-    for encodeFace, faceLoc in zip(encodeCurFrame, faceCurFrame):
-        matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
-        faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
-        
-        matchIndex = np.argmin(faceDis)
-        match_percentage = (1 - faceDis[matchIndex]) * 100
-        
-        if matches[matchIndex] and match_percentage >= 5:  #  match
-            Students_Id = StudentsId[matchIndex].upper()
-            match_value = match_percentage
+    if len(faceCurFrame) > 0:  # If faces are detected
+        # Compare the faces in the current frame with the known faces
+        for encodeFace, faceLoc in zip(encodeCurFrame, faceCurFrame):
+            matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
+            faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
             
-            # Display face match percentage and bounding box
-            y1, x2, y2, x1 = faceLoc
-            y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(img, f"{match_value:.2f}%", (x1 + 6, y2 - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
-        
+            matchIndex = np.argmin(faceDis)
+            match_percentage = (1 - faceDis[matchIndex]) * 100
+            
+            if matches[matchIndex] and match_percentage >= 5:  # Match
+                Students_Id = StudentsId[matchIndex].upper()
+                match_value = match_percentage
+                modeType = 2  # Change mode type on successful match
+                
+                # Display face match percentage and bounding box for known faces
+                y1, x2, y2, x1 = faceLoc
+                y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
+                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(img, f"{match_value:.2f}%", (x1 + 6, y2 - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+            else:
+                # Display bounding box for unknown faces
+                modeType = 3  # Set to default mode if no match
+                y1, x2, y2, x1 = faceLoc
+                y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
+                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Red color for unknown faces
+                cv2.putText(img, "Unknown", (x1 + 6, y2 - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+    else:
+        modeType = 1 # Set to default mode if no faces detected
 
     # Place the webcam feed on the background
     img_background[376:376 + 480, 220:220 + 640] = img
 
-    # Place the resized mode image on the background
-    img_background[152:152 + 798, 1238:1238 + 482] = imgModesList_Shape
+    # Place the corresponding mode image on the background
+    if modeType < len(imgModesList_Shape):
+        img_background[152:152 + 798, 1238:1238 + 482] = imgModesList_Shape[modeType]
 
     # Display the student ID on the screen
     cv2.putText(img_background, f"Student ID :", (220, 850), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 3)
@@ -87,7 +103,6 @@ while True:
     # Break the loop on 'q' key press
     if cv2.waitKey(1) & 0xFF in [ord('q'), ord('Q')]:
        break
-
 
 # Release the webcam and close windows
 cap.release()
