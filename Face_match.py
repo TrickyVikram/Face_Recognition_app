@@ -147,17 +147,17 @@ while True:
             matchIndex = np.argmin(faceDis)
             match_percentage = (1 - faceDis[matchIndex]) * 100
             
-            if matches[matchIndex] and match_percentage >= 50:  # Match
+            if matches[matchIndex] and match_percentage >= 40:  # Match
                 Students_Id = StudentsId[matchIndex].upper()
                 match_value = match_percentage
-                modeType = 2  # Set mode to 5 on successful match
+                modeType = 2  # Set mode to 2 on successful match
                 current_time = time.time()  # Get current timestamp
 
                 # Check if this student has already been marked within the last 10 seconds
                 if Students_Id in last_marked_time:
                     time_diff = current_time - last_marked_time[Students_Id]
-                    if time_diff < 10:  # If less than 10 seconds
-                        modeType = 4  # Set to mode 6 for "Already Marked"
+                    if time_diff < 5:  # If less than 5 seconds
+                        modeType = 4  # Set to mode 4 for "Already Marked"
                     else:
                         last_marked_time[Students_Id] = current_time  # Update the time if it's more than 10 seconds
                         mark_attendance(Students_Id)  # Mark attendance in Firebase
